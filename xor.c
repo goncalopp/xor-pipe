@@ -7,7 +7,7 @@ int min( int a, int b) {if (a<b) return a; return b;}
 
 int main(int argc, char *argv[])
 {
-unsigned char usagemessage[]= "Usage: xor [OPTION] FILE\nXORs stdin with file contents outputting to stdout.\nRepeats FILE if it is shorter than stdin length.\n\n  -t     do not repeat FILE (truncates to FILE length)\n  -r     repeats stdin instead of FILE\n  -f     writes to original file instead of stdin; assumes -t\n";
+unsigned char usagemessage[]= "Usage: xor [OPTION] FILE\nXORs stdin with file contents outputting to stdout.\nRepeats FILE if it is shorter than stdin length.\n\n  -t     do not repeat FILE (truncates to FILE length)\n  -r     repeats stdin instead of FILE\n  -f     writes to original file instead of stdout; assumes -t\n";
 if (argc==1)
 	{puts(usagemessage);
 	exit(0);
