@@ -1,39 +1,99 @@
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
-#include <errno.h>
+#include <unistd.h>
 
+
+int min( int a, int b) {if (a<b) return a; return b;}
 
 int main(int argc, char *argv[])
 {
-if (argc!=2)
-	{printf("XOR - applies XOR between a file and standard input (repeating stdin if necessary) and sends the result to standard output.\nUsage: xor file\n");
+unsigned char usagemessage[]= "Usage: xor [OPTION] FILE\nXORs stdin with file contents outputting to stdout.\nRepeats FILE if it is shorter than stdin length.\n\n  -t     do not repeat FILE (truncates to FILE length)\n  -r     repeats stdin instead of FILE\n";
+if (argc==1)
+	{puts(usagemessage);
 	exit(0);
 	}
 
-char *input;
-int nbytes;
-int infile;	
-int tmp;
-int n;
+int repeatfromstdin = 0, truncate = 0;
 
-infile=open(argv[1], O_RDONLY);
+FILE *infile;	
+unsigned char filebuffer[512];
+unsigned char stdinbuffer[512];
+int nreadfile, nreadstdin;
+int i;
 
-input=malloc(512);
-nbytes=0;
 
-while ((tmp=getchar())!=EOF)
+while ((i = getopt (argc, argv, "rt")) != -1)
+	switch (i)
+		{
+		case 'r':
+			repeatfromstdin = 1;
+			break;
+		case 't':
+			truncate = 1;
+			break;
+		case '?':
+			return -1;
+		} 
+
+
+
+infile=fopen(argv[optind], "r");
+if (fseek(infile, 0, SEEK_SET)) 
 	{
-	*(input+(nbytes++))= (char) tmp;
-	if ((nbytes%512)==511) realloc(input, nbytes+512);
+	fputs("Error opening file\n", stderr);
+	return -1;	
 	}
 
-n=0;
-while (read(infile, &tmp, 1)==1)
+
+if (repeatfromstdin==0 )
 	{
-	putchar(tmp^(*(input+(n++))));
-	if (n>=nbytes) n=0;
+	do
+		{
+		nreadstdin=fread(&stdinbuffer, 1, 512, stdin);
+		nreadfile=fread(&filebuffer, 1, 512, infile);
+		for (i=0; i< min(nreadstdin, nreadfile); i++)
+			stdinbuffer[i]^=filebuffer[i];
+		fwrite(&stdinbuffer, 1, min(nreadstdin, nreadfile), stdout);
+		if (nreadfile < 512) 
+			if (truncate==1)
+				break;
+			else
+				fseek(infile, 0, SEEK_SET);
+		}
+	while (nreadstdin==512);
 	}
+
+
+
+
+
+if (repeatfromstdin==1)
+	{
+	char *input=malloc(512);
+	unsigned int nbytes=0;
+	unsigned long position=0;
+
+	do
+		{
+		nreadstdin=fread(input+nbytes, 1, 512, stdin);
+		nbytes+=nreadstdin;
+		realloc(input, nbytes+512);
+		}
+	while (nreadstdin==512);
+
+	do
+		{
+		nreadfile=fread(&filebuffer, 1, 512, infile);
+		for (i=0; i< nreadfile; i++)
+			filebuffer[i]^=input[(position++)%nbytes];
+
+		fwrite(&filebuffer, 1, nreadfile, stdout);
+		}
+	while (nreadfile==512);
+
+	}
+
+fclose(infile);
 }
+
+
